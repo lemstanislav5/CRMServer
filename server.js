@@ -12,89 +12,59 @@ async function bootstrap() {
     
     // 1. Конфигурация
     const config = require('./config');
-    console.log(`📡 Порт: ${config.port}, Режим: ${config.nodeEnv}`);
-    console.log(`🌍 Разрешённые origins:`, config.cors.origin);
     
-    // 2. База данных
-    const database = require('./database');
-    const { repositories } = await database.init(config.database);
+    // 2. База данныхr 😡 МНЕ НЕ НРАВИТСЯ, ЧТО К БАЗЕ ПОДКЛЮЧАЕТСЯ ВЛОЖЕННАЯ ФУУНКЦИЯ INIT, А ПОТОМ ВОЗВРАЩАЕТ СОЕДИНЕНИЕ И ПРИХОДИТСЯ РАЗДАВАТЬ РЕПОЗИТОРИИ!!
+    const database = require('./database/init');
     console.log('✅ База данных подключена');
+    const { connection } = await database.initDatabase(config.database);
+    // Импортируем репозитории
+    const { AdminRepository, UserRepository, MessageRepository } = require('./database/repositories');
+    const repositories = {
+        usersRepository: new UserRepository(connection),
+        adminRepository: new AdminRepository(connection),
+        messagesRepository: new MessageRepository(connection),
+    };
+    console.log('✅ Репозитории инициализированы');
     
-    // 3. Проверяем репозитории
-    if (!repositories.admin) {
-        console.error('❌ Репозиторий администратора не найден!');
-        console.log('Доступные репозитории:', Object.keys(repositories));
-        process.exit(1);
-    }
-    
-    // 4. Создаем authService
-    const AuthService = require('./services/AuthService');
-    const authService = new AuthService(repositories, config.jwtSecret || 'default-secret-key');
-    
-    // 5. Инициализация администратора
-    await initializeAdmin(repositories, authService);
-
-    // 6. Импортируем остальные сервисы
-    const ChatService = require('./services/ChatService');
-    const UserService = require('./services/UserService');
-    const SocketAuthService = require('./services/SocketAuthService');
-
-    // 7. Создаем объект services
+    // 3. Импортируем сервисы и создаем их инстансы
+    const { AdminService, AuthService, ChatService, UserService, SettingsService, SocketAuthService} = require('./services');
     const services = {
+        authService: new AuthService(repositories, config.jwtSecret || 'default-secret-key'),
         chatService: new ChatService(repositories),
         userService: new UserService(repositories),
-        authService: authService,
-        socketAuthService: new SocketAuthService(authService),
+        socketAuthService: new SocketAuthService(this.authService),
     };
     console.log('✅ Сервисы инициализированы');
     
-    // 8. Express приложение
+    // 4. Импортируем контроллеры и создаем их инстансы
+    const { AuthController } = require('./controllers');
+    const controllers = {
+        authController: new AuthController(services),
+    }
+
+    // 4. Express приложение
     const app = express();
     const server = http.createServer(app);
     
-    // 9. Middleware
-    app.use(cors({
-        origin: config.cors.origin,
-        credentials: config.cors.credentials,
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization']
-    }));
+    // 5. Middleware
+    app.use(cors(config.corsOptions));
     
-    app.options('*', cors(config.cors));
+    app.options('*', cors(config.corsOptions));
     app.use(express.json());
     app.use(express.static('public'));
     
     
-    // 10. Подключаем API маршруты
-    // Подключаем API роутер
-    try {
-        const apiRouter = require('./api')(services.authService);
-        app.use('/api', apiRouter);
-        console.log('✅ API роутер подключен к /api');
-    } catch (error) {
-        console.error('❌ Ошибка подключения API роутера:', error);
-    }
+    // 6. Создаем главный роутер, передавая контроллеры
+    const createRouter = require('./routes');
+    const router = createRouter(controllers);
+    app.use('/api', router);
     
-    // 11. Health check (глобальный)
-    app.get('/health', (req, res) => {
-        res.json({ 
-            status: 'ok',
-            app: config.appName,
-            version: config.version,
-            cors: {
-                allowedOrigins: config.cors.origin,
-                clientOrigin: req.headers.origin || 'unknown'
-            },
-            timestamp: new Date().toISOString(),
-            uptime: process.uptime()
-        });
-    });
     
-    // 12. Socket.IO
+    // 8. Socket.IO
     const io = socketIO(server, {
         cors: {
-            origin: config.cors.origin,
-            credentials: config.cors.credentials,
+            origin: config.corsOptions.origin,
+            credentials: config.corsOptions.credentials,
             methods: ['GET', 'POST']
         },
         allowEIO3: true,
@@ -103,12 +73,15 @@ async function bootstrap() {
         pingInterval: 25000
     });
 
-    // 13. WebSocket middleware аутентификации
-    io.use((socket, next) => {
-        services.socketAuthService.socketAuthentication(socket, next);
-    });
+    // 9. WebSocket middleware аутентификации
+    const socketAuth = require('./middleware/socketAuth');
 
-    // 14. WebSocket обработчики
+    io.use(socketAuth); // Для всех пространств имен
+    // io.use((socket, next) => {
+    //     services.socketAuthService.socketAuthentication(socket, next);
+    // });
+
+    // 10. WebSocket обработчики
     io.on('connection', (socket) => {
         console.log(`🔌 Новое соединение: ${socket.id}`);
         console.log(`👤 Тип: ${socket.isAdmin ? 'Администратор' : 'Клиент'}`);
@@ -144,51 +117,11 @@ async function bootstrap() {
         console.log(`\n🎯 Сервер запущен!`);
         console.log(`🌐 HTTP API: http://localhost:${config.port}`);
         console.log(`📡 WebSocket: ws://localhost:${config.port}`);
-        console.log(`🔐 API Endpoints:`);
-        console.log(`   POST /api/auth/login`);
-        console.log(`   POST /api/auth/verify`);
-        console.log(`   GET  /api/auth/profile`);
-        console.log(`👁️  Health check: http://localhost:${config.port}/health`);
-        console.log(`🌍 Разрешённые клиенты:`, config.cors.origin);
-        console.log('\n✅ Готов к подключению клиентов!');
     });
     
     // 16. Graceful shutdown
     process.on('SIGTERM', () => gracefulShutdown(server, database));
     process.on('SIGINT', () => gracefulShutdown(server, database));
-}
-
-/**
- * Инициализация администратора
- */
-async function initializeAdmin(repositories, authService) {
-    try {
-        if (!repositories.admin.findFirst) {
-            console.error('❌ Метод findFirst не найден');
-            return;
-        }
-        
-        const admin = await repositories.admin.findFirst();
-        
-        if (!admin) {
-            console.log('👨‍💼 Администратор не найден, создаем стандартного...');
-            await authService.createAdmin('admin', 'admin', 'Главный администратор');
-            console.log('✅ Стандартный администратор создан');
-            console.log('🔑 Логин: admin, Пароль: admin');
-        } else {
-            console.log('✅ Администратор найден в БД');
-        }
-    } catch (error) {
-        console.error('❌ Ошибка инициализации администратора:', error.message);
-    }
-}
-
-async function gracefulShutdown(server, database) {
-    console.log('\n🛑 Завершение работы...');
-    server.close();
-    await database.close();
-    console.log('✅ Сервер остановлен');
-    process.exit(0);
 }
 
 // Запуск

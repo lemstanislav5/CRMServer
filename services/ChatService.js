@@ -8,38 +8,32 @@ class ChatService {
     /**
      * ОСНОВНАЯ ЛОГИКА: Отправка сообщения клиента администратору
      */
-    async sendMessageToAdmin(clientData) {
-        // clientData: { clientId, text, type?, name? }
-        
-        console.log(`📨 Сообщение от ${clientData.clientId} к администратору`);
+    async sendMessageToAdmin(fromId, toId, text, time) {
+        console.log(`📨 Сообщение от ${fromId} к администратору`);
         
         // 1. Генерируем уникальный ID сообщения
         const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const timestamp = Date.now();
         
         // 2. Сохраняем сообщение в БД
-        const dbResult = await this.messages.addMessage(
-            clientData.clientId,          // fromId
-            'admin',                      // toId (администратор)
-            messageId,                    // уникальный ID
-            clientData.text,              // текст
-            timestamp,                    // время
-            clientData.type || 'text',    // тип
-            0                             // is_read (не прочитано)
-        );
+        const dbResult = await this.messages.addMessage(fromId, toId, messageId, text, time, text.type, 0);
+        console.log('Сообщение сохранилось как: ', dbResult)
         
         // 3. Получаем данные администратора
-        const adminData = await this.admin.findAdmin();
-        const admin = adminData[0] || { socketId: null };
+        const admin = await this.admin.findAdmin();
+        console.log('Найден администратор: ', admin);
+        if(admin.socketId == null || admin.setOnline){
+            return console.log('Администратор не онлайн или его socketId = null');
+        }
         
         // 4. Подготавливаем данные для отправки
         const messageForAdmin = {
             id: dbResult.lastID,
             messageId: messageId,
-            fromId: clientData.clientId,
+            fromId,
             fromName: clientData.name || 'Клиент',
             text: clientData.text,
-            time: timestamp,
+            time: Date.now(),
             type: clientData.type || 'text',
             is_read: 0
         };

@@ -1,135 +1,29 @@
-// services/SettingsService.js
-class SettingsService {
-    constructor(repositories) {
-        this.settingsRepo = repositories.settings;
+// services/auth.service.js
+class AuthService {
+    constructor(userRepository, tokenService) {
+        this.userRepository = userRepository;
+        this.tokenService = tokenService;
     }
-    
-    /**
-     * Получить все настройки для фронтенда
-     */
-    async getAllSettings() {
-        try {
-            const [
-                socketSettings,
-                colorSettings,
-                consentSettings,
-                questions,
-                contacts
-            ] = await Promise.all([
-                this.settingsRepo.getSocketSettings(),
-                this.settingsRepo.getColorSettings(),
-                this.settingsRepo.getConsentSettings(),
-                this.settingsRepo.getQuestions(),
-                this.settingsRepo.getContacts()
-            ]);
-            
-            return {
-                socket: socketSettings[0] || {},
-                colors: colorSettings[0] || {},
-                consent: consentSettings[0] || {},
-                questions: questions || [],
-                contacts: contacts || []
-            };
-        } catch (error) {
-            console.error('❌ Ошибка получения настроек:', error);
-            throw error;
+
+    async authenticate(login, password) {
+        // 1. Находим пользователя
+        const user = await this.userRepository.findByLogin(login);
+        
+        // 2. Проверяем пароль
+        if (!user || !await bcrypt.compare(password, user.password)) {
+            return { success: false, error: 'Invalid credentials' };
         }
-    }
-    
-    /**
-     * Обновить настройки сокета
-     */
-    async updateSocketSettings(data) {
-        try {
-            // Валидация
-            if (!data.url || !data.port) {
-                throw new Error('URL и порт обязательны');
-            }
-            
-            const result = await this.settingsRepo.updateSocketSettings({
-                url: data.url,
-                ws: data.ws || 'ws',
-                port: data.port.toString()
-            });
-            
-            return {
-                success: true,
-                changes: result.changes,
-                settings: {
-                    url: data.url,
-                    ws: data.ws || 'ws',
-                    port: data.port
-                }
-            };
-        } catch (error) {
-            console.error('❌ Ошибка обновления настроек сокета:', error);
-            throw error;
-        }
-    }
-    
-    /**
-     * Обновить цвета
-     */
-    async updateColors(colors) {
-        try {
-            // Здесь будет вызов репозитория когда добавим метод
-            console.log('🔄 Обновление цветов:', colors);
-            return { success: true, colors };
-        } catch (error) {
-            console.error('❌ Ошибка обновления цветов:', error);
-            throw error;
-        }
-    }
-    
-    /**
-     * Добавить/обновить вопрос
-     */
-    async updateQuestion(questionData) {
-        try {
-            // Здесь будет вызов репозитория
-            console.log('🔄 Обновление вопроса:', questionData);
-            return { success: true, question: questionData };
-        } catch (error) {
-            console.error('❌ Ошибка обновления вопроса:', error);
-            throw error;
-        }
-    }
-    
-    /**
-     * Добавить/обновить контакт
-     */
-    async updateContact(contactData) {
-        try {
-            // Здесь будет вызов репозитория
-            console.log('🔄 Обновление контакта:', contactData);
-            return { success: true, contact: contactData };
-        } catch (error) {
-            console.error('❌ Ошибка обновления контакта:', error);
-            throw error;
-        }
-    }
-    
-    /**
-     * Получить настройки для клиента (публичные)
-     */
-    async getPublicSettings() {
-        try {
-            const [questions, contacts, colors] = await Promise.all([
-                this.settingsRepo.getQuestions(),
-                this.settingsRepo.getContacts(),
-                this.settingsRepo.getColorSettings()
-            ]);
-            
-            return {
-                colors: colors[0] || {},
-                questions: questions || [],
-                contacts: contacts || []
-            };
-        } catch (error) {
-            console.error('❌ Ошибка получения публичных настроек:', error);
-            throw error;
-        }
+        
+        // 3. Генерируем токен
+        const token = this.tokenService.generateToken(user);
+        
+        // 4. Логируем событие
+        this.logger.info(`User ${user.id} logged in`);
+        
+        return {
+            success: true,
+            token,
+            user: { id: user.id, login: user.login, role: user.role }
+        };
     }
 }
-
-module.exports = SettingsService;

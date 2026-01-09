@@ -9,9 +9,7 @@ class UserService {
     }
     
     async getAllUsers() {
-        // Временный метод - добавим позже в репозиторий
-        const connection = require('../database').getConnection();
-        return await connection.query('SELECT * FROM users');
+         return await this.users.getAllUsers();
     }
 }
 

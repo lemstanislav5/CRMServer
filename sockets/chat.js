@@ -4,16 +4,10 @@ module.exports = function(socket, io, services) {
     // КЛИЕНТ отправляет сообщение администратору
     socket.on('message', async (data) => {
         console.log(`💬 Клиентское сообщение:`, data);
-        
+        const { fromId, toId, text, timestamp} = data;
         try {
             // 1. Обрабатываем через сервис (добавляем в базу данных)
-            const result = await services.chatService.sendMessageToAdmin({
-                clientId: data.clientId,
-                text: data.text,
-                type: data.type || 'text',
-                name: data.name || 'Клиент'
-            });
-            
+            const result = await services.chatService.sendMessageToAdmin(fromId, toId, text, timestamp);
             // 2. Отправляем подтверждение клиенту
             socket.emit('message_sent', {
                 success: true,
