@@ -10,9 +10,14 @@ module.exports = (controllers) => {
     
     // Регистрируем префиксы
     router.use('/auth', authRouter);
-    // router.use('/users', usersRouter);
-    // router.use('/chat', chatRouter);
-    
+   
+    router.post('/messages', (req, res) => {  // Исправить на messages
+        console.log('POST /api/messages', req.body);
+        res.json({ success: true, message: 'Route works!' });
+    });
+
+
+
     // Health check endpoint
     router.get('/health', (req, res) => {
         res.json({ status: 'OK', timestamp: new Date().toISOString() });
