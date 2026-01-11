@@ -1,0 +1,34 @@
+﻿Project Structure:
+├── controllers
+│   ├── AdminController.js
+│   ├── MessegesController.js
+│   ├── SetingsController.js
+│   └── UsersController.js
+├── handlers
+│   ├── httpHandlers.js
+│   ├── socketHandlersForAdmin.js
+│   └── socketHandlersForUsers.js
+├── media
+│   ├── png
+│   │   └── 1767356824154.png
+│   └── .DS_Store
+├── middleware
+│   └── headerAccessControl.js
+├── public
+│   └── 404.html
+├── routes
+│   ├── index.js
+│   └── mediaRoute.js
+├── services
+│   └── dataBase.js
+├── utilities
+│   ├── users.js
+│   └── utilities.js
+├── .DS_Store
+├── .env
+├── data.db3
+├── index.js
+├── package-lock.json
+├── package.json
+├── README.md
+└── tree.txt

@@ -2,10 +2,10 @@ const fs = require("fs"),
       Utilities = require('../utilities/utilities'),
       process = require('process'),
       {v4: uuidv4} = require('uuid'),
-      MessegesController = require("../controllers/MessegesController"),
-      UsersController = require('../controllers/UsersController'),
-      ManagerController = require('../controllers/AdminController'),
-      SetingsController = require('../controllers/SetingsController'),
+      MessegesController = require("../core/controllers/MessegesController"),
+      UsersController = require('../core/controllers/UsersController'),
+      ManagerController = require('../core/controllers/AdminController'),
+      SetingsController = require('../core/controllers/SetingsController'),
       { table } = require("console");
 
 module.exports = {

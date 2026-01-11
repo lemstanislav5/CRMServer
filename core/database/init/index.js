@@ -1,8 +1,8 @@
 // database/index.js
 const createConnection = require('../connection');
-const schema = require('./schema');
-const indexes = require('./indexes');
-const seeder = require('./seeder');
+const schema = require('../schema');
+const indexes = require('../indexes');
+const seeder = require('../seeder');
 
 /**
  * Инициализирует базу данных: создает таблицы, индексы и заполняет начальными данными
