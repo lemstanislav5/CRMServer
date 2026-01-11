@@ -13,7 +13,7 @@ module.exports = (controllers, middleware) => {
     /**
      * Приватные маршруты
      */
-    router.post('/messages', middleware.authMiddleware.handle, (req, res) => {
+    router.post('/messages', middleware.httpAuthMiddleware.handle, (req, res) => {
         res.json({ message: 'Доступ разрешен', user: req.user });
     });
     
