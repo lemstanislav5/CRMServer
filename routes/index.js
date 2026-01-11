@@ -3,19 +3,24 @@ const express = require('express');
 const router = express.Router();
 
 module.exports = (controllers) => {
-    // Подключаем отдельные модули роутов
-    const authRouter = require('./auth')(controllers.authController);
-    // const usersRouter = require('./users')(controllers.userController);
-    // const chatRouter = require('./chat')(controllers.chatController);
+    /**
+     * Публичные маршруты
+     */
+    router.post('/login', 
+        // авторизация реализована в методе контроллера authController.login
+        (req, res) => controllers.authController.login(req, res)
+    );
     
-    // Регистрируем префиксы
-    router.use('/auth', authRouter);
-   
-    router.post('/messages', (req, res) => {  // Исправить на messages
-        console.log('POST /api/messages', req.body);
-        res.json({ success: true, message: 'Route works!' });
+    /**
+     * Приватные маршруты
+     */
+    router.post('/messages', (req, res) => {
+        // верификация реализована в методе контроллера authController verify
+        controllers.authController.verify(req, res);
     });
-
+    
+    //  if (req.auth) return res.status(200).send({ login: req.manager.login });
+    // return res.status(401).send();
 
 
     // Health check endpoint

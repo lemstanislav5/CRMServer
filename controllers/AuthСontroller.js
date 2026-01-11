@@ -69,7 +69,6 @@ class AuthController {
 
     /**
      * Проверка токена
-     * GET /api/auth/verify
      */
     async verify(req, res) {
         try {
@@ -85,12 +84,13 @@ class AuthController {
             const result = this.authService.verifyToken(token);
             
             if (!result.success) {
+                console.log('🔥 Ошибка верификации токена!')
                 return res.status(401).json({
                     success: false,
                     message: 'Невалидный токен'
                 });
             }
-            
+            console.log('✅ Токен прошел верификацию!', result)
             return res.status(200).json({
                 success: true,
                 data: {

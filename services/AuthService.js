@@ -25,6 +25,7 @@ class AuthService {
             console.log(`🔐 AdminService.loginAdmin: ${login}`);
             // 1. Находим администратора
             const admin = await this.adminRepository.findByLogin(login);
+            console.log(admin)
             
             if (!admin) {
                 console.log(`❌ Администратор не найден: ${login}`);
@@ -39,22 +40,11 @@ class AuthService {
             let isPasswordValid = false;
             
             if (admin.password_hash) {
-                // Новый формат: пароль хеширован bcrypt
+                // пароль хеширован bcrypt
                 isPasswordValid = await bcrypt.compare(password, admin.password_hash);
-            } else if (admin.password) {
-                // Старый формат: пароль в открытом виде (для миграции)
-                isPasswordValid = (password === admin.password);
             } else {
                 // Нет пароля в БД
                 isPasswordValid = false;
-            }
-            
-            // 3. Проверяем активность
-            if (admin.is_active === false || admin.is_active === 0) {
-                return {
-                    success: false,
-                    error: 'Account disabled'
-                };
             }
             
             if (!isPasswordValid) {
@@ -65,28 +55,27 @@ class AuthService {
                 };
             }
             
-            // 4. Генерируем токены (в точности как в старом коде)
+            // 3. Генерируем токены
             const payload = { 
                 id: admin.id, 
                 login: admin.login 
             };
             
-            // Access token - 14 минут (как в старом коде)
+            // Access token - 14 минут 
             const accessToken = this.generateToken(payload, '14m');
             
-            // Refresh token - 30 дней (как в старом коде)
+            // Refresh token - 30 дней 
             const refreshToken = this.generateToken(payload, '30d');
             
             
-            console.log(`✅ Успешная аутентификация: ${admin.login} (ID: ${admin.id})`);
+            console.log(`✅ Успешная аутентификация: ${admin.login}`);
             
-            // 6. Возвращаем данные в ТОЧНО ТАКОМ ЖЕ формате, как старый код
+            // 4. Возвращаем данные в ТОЧНО ТАКОМ ЖЕ формате, как старый код
             return {
                 success: true,
                 token: accessToken,        // Только access token
                 login: admin.login,        // Логин администратора
                 refreshToken: refreshToken, // Refresh token для cookie
-                payload: payload           // Для отладки
             };
             
         } catch (error) {

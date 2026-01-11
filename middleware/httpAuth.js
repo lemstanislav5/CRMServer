@@ -30,7 +30,7 @@ const authHttp = (req, res, next) => {
     }
 
     const token = parts[1];
-
+    console.log('authHttp.js:', token)
     // 3. Валидируем токен
     const decoded = jwt.verify(token, process.env.JWT_SECRET || process.env.PRIVATE_KEY);
 
