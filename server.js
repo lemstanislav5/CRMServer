@@ -76,9 +76,14 @@ async function bootstrap() {
         pingInterval: 25000
     });
 
+    // 8. Инициализируем middleware
+    const {SocketAuthMiddleware } = require('./middleware');
+    const middleware = {
+        socketAuthMiddleware: new SocketAuthMiddleware(services),    
+    }
     // 9. Проверяем верификацию токена при соект соединении
     io.use((socket, next) =>
-        controllers.authController.verifySocket(socket, next)
+        middleware.socketAuthMiddleware.verifySocket(socket, next)
     );
 
     // 10. WebSocket обработчики
@@ -89,7 +94,7 @@ async function bootstrap() {
         if (socket.isAdmin && socket.decoded != undefined) {
             console.log(`🛡️  Админ: `,  socket.decoded, socket.id);
             // Сохраняем socketId администратора
-            controllers.adminController.updateSocketId(socket);
+            // controllers.adminController.updateSocketId(socket.decoded.id, socket.id);
             
             // Обработчик для администратора
             // require('./sockets/admin')(socket, io, services);
@@ -103,8 +108,8 @@ async function bootstrap() {
             console.log(`🔌 Отключение: ${socket.id}`);
             
             if (socket.isAdmin && socket.adminId) {
-                repositories.admin.updateSocketId(socket.adminId, null)
-                    .catch(err => console.error('❌ Ошибка очистки socketId:', err));
+                // controllers.adminController.updateSocketId(socket.decoded.id, null)
+                //     .catch(err => console.error('❌ Ошибка очистки socketId:', err));
             }
         });
     });

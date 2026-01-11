@@ -5,8 +5,6 @@ class AdminService {
 
     /**
      * Обновление socketId администратора
-     * @param {number} id - ID администратора
-     * @param {string} socketId - Новый socketId
      */
     async updateSocketId(id, socketId) {
         try {
