@@ -1,29 +1,22 @@
-// services/auth.service.js
-class AuthService {
-    constructor(userRepository, tokenService) {
-        this.userRepository = userRepository;
-        this.tokenService = tokenService;
+class AdminService {
+    constructor({adminRepository}) {
+        this.adminRepository = adminRepository;
     }
 
-    async authenticate(login, password) {
-        // 1. Находим пользователя
-        const user = await this.userRepository.findByLogin(login);
-        
-        // 2. Проверяем пароль
-        if (!user || !await bcrypt.compare(password, user.password)) {
-            return { success: false, error: 'Invalid credentials' };
+    /**
+     * Обновление socketId администратора
+     * @param {number} id - ID администратора
+     * @param {string} socketId - Новый socketId
+     */
+    async updateSocketId(id, socketId) {
+        try {
+            await this.adminRepository.updateSocketId(id, socketId);
+            console.log(`✅ SocketId обновлен для администратора ID: ${id}`);
+            return { success: true };
+        } catch (error) {
+            console.error('❌ Ошибка обновления socketId:', error);
+            return { success: false, error: error.message };
         }
-        
-        // 3. Генерируем токен
-        const token = this.tokenService.generateToken(user);
-        
-        // 4. Логируем событие
-        this.logger.info(`User ${user.id} logged in`);
-        
-        return {
-            success: true,
-            token,
-            user: { id: user.id, login: user.login, role: user.role }
-        };
     }
 }
+module.exports = AdminService;

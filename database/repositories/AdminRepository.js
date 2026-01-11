@@ -21,7 +21,7 @@ class AdminRepository {
 
     async updateSocketId(adminId, socketId) {
         const result = await this.db.run(
-            'UPDATE admin SET socket_id = ? WHERE id = ?',
+            'UPDATE admin SET socketId = ? WHERE id = ?',
             [socketId, adminId]
         );
         return result;

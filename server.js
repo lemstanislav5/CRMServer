@@ -6,6 +6,7 @@ const socketIO = require('socket.io');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const { admin } = require('./database/init/schema');
 
 async function bootstrap() {
     console.log('🚀 Инициализация сервера...');
@@ -30,6 +31,7 @@ async function bootstrap() {
     const { AdminService, AuthService, ChatService, UserService, SettingsService, SocketAuthService} = require('./services');
     const services = {
         authService: new AuthService(repositories, config.jwtSecret || 'default-secret-key'),
+        adminService: new AdminService(repositories),
         chatService: new ChatService(repositories),
         userService: new UserService(repositories),
         socketAuthService: new SocketAuthService(this.authService),
@@ -37,9 +39,10 @@ async function bootstrap() {
     console.log('✅ Сервисы инициализированы');
     
     // 4. Импортируем контроллеры и создаем их инстансы
-    const { AuthController } = require('./controllers');
+    const { AuthController, AdminController } = require('./controllers');
     const controllers = {
         authController: new AuthController(services),
+        adminController: new AdminController(services)
     }
 
     // 4. Express приложение
@@ -73,32 +76,26 @@ async function bootstrap() {
         pingInterval: 25000
     });
 
-    // 9. WebSocket middleware аутентификации
-    const socketAuth = require('./middleware/socketAuth');
-
-    io.use(socketAuth); // Для всех пространств имен
-    // io.use((socket, next) => {
-    //     services.socketAuthService.socketAuthentication(socket, next);
-    // });
+    // 9. Проверяем верификацию токена при соект соединении
+    io.use((socket, next) =>
+        controllers.authController.verifySocket(socket, next)
+    );
 
     // 10. WebSocket обработчики
     io.on('connection', (socket) => {
         console.log(`🔌 Новое соединение: ${socket.id}`);
         console.log(`👤 Тип: ${socket.isAdmin ? 'Администратор' : 'Клиент'}`);
         
-        if (socket.isAdmin) {
-            console.log(`🛡️  Админ: ${socket.adminLogin} (ID: ${socket.adminId})`);
-            
+        if (socket.isAdmin && socket.decoded != undefined) {
+            console.log(`🛡️  Админ: `,  socket.decoded, socket.id);
             // Сохраняем socketId администратора
-            repositories.admin.updateSocketId(socket.adminId, socket.id)
-                .then(() => console.log('✅ SocketId администратора сохранен'))
-                .catch(err => console.error('❌ Ошибка сохранения socketId:', err));
+            controllers.adminController.updateSocketId(socket);
             
             // Обработчик для администратора
-            require('./sockets/admin')(socket, io, services);
+            // require('./sockets/admin')(socket, io, services);
         } else {
             // Обработчик для клиента
-            require('./sockets/chat')(socket, io, services);
+            // require('./sockets/chat')(socket, io, services);
         }
         
         // Отслеживание отключения
