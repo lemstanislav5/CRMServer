@@ -1,8 +1,7 @@
-// routes/index.js - главный файл роутинга
 const express = require('express');
 const router = express.Router();
 
-module.exports = (controllers) => {
+module.exports = (controllers, middleware) => {
     /**
      * Публичные маршруты
      */
@@ -14,9 +13,8 @@ module.exports = (controllers) => {
     /**
      * Приватные маршруты
      */
-    router.post('/messages', (req, res) => {
-        // верификация реализована в методе контроллера authController verify
-        controllers.authController.verify(req, res);
+    router.post('/messages', middleware.authMiddleware.handle, (req, res) => {
+        res.json({ message: 'Доступ разрешен', user: req.user });
     });
     
     //  if (req.auth) return res.status(200).send({ login: req.manager.login });
